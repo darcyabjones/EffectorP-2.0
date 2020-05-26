@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
     Improved prediction of fungal effector proteins from secretomes with EffectorP 2.0
-    Copyright (C) 2017-2018 Jana Sperschneider	
+    Copyright (C) 2017-2018 Jana Sperschneider
 
-    This program is free software; you can redistribute it and/or modify  
-    it under the terms of the GNU General Public License as published by  
-    the Free Software Foundation; either version 3 of the License, or     
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
@@ -52,7 +52,7 @@ def get_weka_path(script_path):
         print("Alternatively set the environment variable 'WEKA38' to point to the folder containing the weka.jar file.")
         print()
         sys.exit(1)
-    
+
     return weka_path
 
 
@@ -120,7 +120,7 @@ def main():
     # -----------------------------------------------------------------------------------------------------------
     # Check if FASTA file exists
     try:
-        open(FASTA_FILE, 'r') 
+        open(FASTA_FILE, 'r')
     except OSError as e:
         print("Unable to open FASTA file:", FASTA_FILE)  #Does not exist OR no read permissions
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
@@ -129,7 +129,7 @@ def main():
     # Try to create folder where results will be stored
     try:
         os.mkdir(RESULTS_PATH)
-    except OSError as exception:        
+    except OSError as exception:
         if exception.errno != errno.EEXIST:
             raise
     # -----------------------------------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ def main():
     # Call pepstats
     print('Call pepstats...')
     ProcessExe = PEPSTATS_PATH + 'pepstats'
-    ParamList = [ProcessExe, '-sequence', RESULTS_PATH + 'short_ids.fasta', 
+    ParamList = [ProcessExe, '-sequence', RESULTS_PATH + 'short_ids.fasta',
               '-outfile', RESULTS_PATH +  'pepstats.out']
 
     try:
@@ -177,7 +177,7 @@ def main():
     print()
     # -----------------------------------------------------------------------------------------------------------
     # Write the WEKA arff file for classification of the input FASTA file
-    weka_input = RESULTS_PATH + 'weka.arff'    
+    weka_input = RESULTS_PATH + 'weka.arff'
     functions.write_weka_input(weka_input, SHORT_IDENTIFIERS, pepstats_dic)
     # -----------------------------------------------------------------------------------------------------------
     # Ensembl averaging approach, use seq0,seq1,seq2... as keys in case there are duplicate FASTA identifiers
@@ -208,21 +208,21 @@ def main():
                 e = sys.exc_info()[1]
                 print("Error calling WEKA: %s" % e)
                 sys.exit(1)
-        #-------------------------------------------------------------- 
+        #--------------------------------------------------------------
         # Parse the WEKA output file
         file_input = RESULTS_PATH + 'Predictions.txt'
         predicted_effectors, predicted_noneffectors, predictions = functions.parse_weka_output(file_input, ORIGINAL_IDENTIFIERS, SEQUENCES)
-        
+
         for index, (ident, prediction, prob, seq) in enumerate(predictions):
 
             short_ident = 'seq' + str(index)
 
             if short_ident in ensembl_votes:
-                previous_predictions = ensembl_votes[short_ident] 
+                previous_predictions = ensembl_votes[short_ident]
                 ensembl_votes[short_ident] = previous_predictions + [(prediction, prob)]
             else:
                 ensembl_votes[short_ident] = [(prediction, prob)]
-        #-------------------------------------------------------------- 
+        #--------------------------------------------------------------
     for model in functions.models_J48:
         #--------------------------------------------------------------
         ParamList = ['java', '-cp', WEKA_PATH, 'weka.classifiers.trees.J48', '-l', SCRIPT_PATH + model, '-T', RESULTS_PATH + 'weka.arff', '-p', 'first-last']
@@ -243,17 +243,17 @@ def main():
                 e = sys.exc_info()[1]
                 print("Error calling WEKA: %s" % e)
                 sys.exit(1)
-        #-------------------------------------------------------------- 
+        #--------------------------------------------------------------
         # Parse the WEKA output file
         file_input = RESULTS_PATH + 'Predictions.txt'
         predicted_effectors, predicted_noneffectors, predictions = functions.parse_weka_output(file_input, ORIGINAL_IDENTIFIERS, SEQUENCES)
-        
+
         for index, (ident, prediction, prob, seq) in enumerate(predictions):
 
             short_ident = 'seq' + str(index)
 
             if short_ident in ensembl_votes:
-                previous_predictions = ensembl_votes[short_ident] 
+                previous_predictions = ensembl_votes[short_ident]
                 ensembl_votes[short_ident] = previous_predictions + [(prediction, prob)]
             else:
                 ensembl_votes[short_ident] = [(prediction, prob)]
@@ -265,7 +265,7 @@ def main():
     ensemble_predictions, predicted_effectors, predicted_noneffectors, predicted_weakeffectors = [], [], [], []
     #--------------------------------------------------------------
     for index, (ident, prediction, prob, seq) in enumerate(predictions):
- 
+
         short_ident = 'seq' + str(index)
         yes_prob, no_prob = [], []
 
@@ -273,15 +273,15 @@ def main():
 
             if vote == 'Non-effector':
                 no_prob.append(prob)
-                yes_prob.append(1.0 - prob)                        
+                yes_prob.append(1.0 - prob)
 
             if vote == 'Effector':
                 yes_prob.append(prob)
-                no_prob.append(1.0 - prob)        
-             
+                no_prob.append(1.0 - prob)
+
         yes_prob = sum(yes_prob)/float(len(models))
         no_prob = sum(no_prob)/float(len(models))
-        
+
         yes_prob, no_prob = round(yes_prob,3), round(no_prob,3)
 
         if yes_prob > no_prob:
@@ -303,15 +303,15 @@ def main():
     # If user wants the stdout output directed to a specified file
     if output_file:
 
-        with open(output_file, 'wb') as out:
+        with open(output_file, 'w') as out:
             # Short format: output predictions for all proteins as tab-delimited table
             if short_format:
                 out.writelines(functions.short_output(ensemble_predictions))
             # If the user wants to see the long format, output additional information and stats
             else:
                 out.writelines(functions.short_output(ensemble_predictions))
-                out.writelines(functions.long_output(ORIGINAL_IDENTIFIERS, predicted_effectors))                
-        print('EffectorP results were saved to output file:', output_file) 
+                out.writelines(functions.long_output(ORIGINAL_IDENTIFIERS, predicted_effectors))
+        print('EffectorP results were saved to output file:', output_file)
 
     else:
         # Short format: output predictions for all proteins as tab-delimited table to stdout
@@ -327,15 +327,15 @@ def main():
         with open(effector_output, 'w') as f_output:
             for effector, prob, sequence in predicted_effectors:
                 f_output.writelines('>' + effector + ' | Effector probability: ' + str(prob) + '\n')
-                f_output.writelines(sequence + '\n')  
+                f_output.writelines(sequence + '\n')
     if noneffector_output:
         with open(noneffector_output, 'w') as f_output:
             for effector, prob, sequence in predicted_noneffectors:
                 f_output.writelines('>' + effector + ' | Non-effector probability: ' + str(prob) + '\n')
-                f_output.writelines(sequence + '\n')  
+                f_output.writelines(sequence + '\n')
             for effector, prob, sequence in predicted_weakeffectors:
                 f_output.writelines('>' + effector + ' | Unlikely effector probability: ' + str(prob) + '\n')
-                f_output.writelines(sequence + '\n')  
+                f_output.writelines(sequence + '\n')
     # -----------------------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------
     # Clean up and delete temporary folder that was created
@@ -351,5 +351,5 @@ def main():
         pass
     # -----------------------------------------------------------------------------------------------------------
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     main()
